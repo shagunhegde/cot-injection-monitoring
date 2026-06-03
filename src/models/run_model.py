@@ -114,7 +114,7 @@ def generate_one_hf(
         # skip_special_tokens=False so </think> stays visible.
         return tokenizer.decode(new_tokens, skip_special_tokens=False)
 
-    full_output = oom_guard(_gen, max_new_tokens=max_new_tokens, **gen_kwargs)
+    full_output = oom_guard(_gen, **gen_kwargs)
     return parse_output(full_output)
 
 
