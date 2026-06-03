@@ -98,7 +98,6 @@ def generate_one_hf(
     inputs = tokenizer(prompt, return_tensors="pt", add_special_tokens=False).to(device)
 
     gen_kwargs: dict[str, Any] = {
-        "max_new_tokens": max_new_tokens,
         "do_sample": True,
         "temperature": temperature,
         "top_p": top_p,
@@ -114,7 +113,7 @@ def generate_one_hf(
         # skip_special_tokens=False so </think> stays visible.
         return tokenizer.decode(new_tokens, skip_special_tokens=False)
 
-    full_output = oom_guard(_gen, **gen_kwargs)
+    full_output = oom_guard(_gen, max_new_tokens=max_new_tokens, **gen_kwargs)
     return parse_output(full_output)
 
 
