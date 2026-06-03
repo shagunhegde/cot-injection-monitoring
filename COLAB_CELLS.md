@@ -85,6 +85,7 @@ from src.data.load_mmlu import load_mmlu
 from src.data.select_target import uniform_logprobs, select_targets
 from src.pipeline.baseline import get_or_cache_baseline, get_or_cache_target
 from src.attacks.generate import generate_all_prefills
+from src.attacks.length_control import MockTokenizer
 
 paths = resolve_root()
 
@@ -133,10 +134,9 @@ for c in matrix[:3]:
 # Layer 2: generate prefills via Anthropic API
 prefill_cache = Cache(paths.root, "prefills")
 client = LLMClient.from_env()
-generator_model = cfg.get("generator_model", "claude-haiku-4-5-20251001")
 stats = generate_all_prefills(matrix, items_by_hash, client,
-                               tokenizer=None, cache=prefill_cache,
-                               generator_model=generator_model)
+                               tokenizer=MockTokenizer(), cache=prefill_cache,
+                               generator_model="claude-haiku-4-5-20251001")
 print("Prefill stats:", stats)
 ```
 
@@ -169,54 +169,67 @@ print("Model loaded:", model_cfg["hf_id"])
 
 ## Cell 8 — Run subject inference (Layer 3)
 
-Requires: Cell 6 (items/matrix/prefill_cache built), Cell 7 (model loaded).
+Requires: Cell 6 (prefills generated), Cell 7 (model loaded).
 
 ```python
-import os, json, yaml
-from pathlib import Path
+import os, yaml
 os.chdir("/content/cot-injection-monitoring")
 
 from src.infra.paths import resolve_root
 from src.infra.cache import Cache
 from src.infra.matrix import build_condition_matrix
 from src.data.load_mmlu import load_mmlu
+from src.data.select_target import uniform_logprobs
+from src.pipeline.baseline import get_or_cache_baseline, get_or_cache_target
+from src.pipeline.run_experiment import _resolve_targets
+from src.attacks.generate import prefill_cache_key, prefill_shard
 from src.models.run_model import run_conditions_hf
 
 paths = resolve_root()
 cfg = yaml.safe_load(open("config/experiment.yaml"))
 cfg.update({"limit": 1, "families": ["B"], "lengths": [100], "n_items": 5})
 
-items = load_mmlu(
-    subjects="all", split="test", n_items=5,
-    cache_dir=paths.root / "data" / "hf_cache",
-)
+items = load_mmlu(subjects="all", split="test", n_items=5,
+                  cache_dir=paths.root / "data" / "hf_cache")
 items_by_hash = {it["item_hash"]: it for it in items}
-matrix = build_condition_matrix(cfg, [it["item_hash"] for it in items])
 
-# Load prefills from Layer-2 cache
-def load_prefills(cache_root: Path) -> dict:
-    out = {}
-    prefill_dir = cache_root / "cache" / "prefills"
-    if not prefill_dir.exists():
-        return out
-    for shard in sorted(prefill_dir.rglob("*.jsonl")):
-        with open(shard) as f:
-            for line in f:
-                try:
-                    rec = json.loads(line)
-                except json.JSONDecodeError:
-                    continue
-                meta = rec.get("meta", {})
-                result = rec.get("result", {})
-                if result and result.get("text"):
-                    family = meta.get("family", "")
-                    length = meta.get("length", 0)
-                    item_hash = meta.get("item_hash", "")
-                    if family and length and item_hash:
-                        out[f"{family}|{length}|{item_hash}"] = result["text"]
-    return out
+# Resolve targets (same as Cell 6 — reads from cache, no API calls)
+baseline_cache = Cache(paths.root, "baselines")
+target_cache = Cache(paths.root, "targets")
+def _dummy_generate(item):
+    return {"answer_letter": item["answer_letter"],
+            "option_logprobs": uniform_logprobs(len(item["choices"]))}
+for item in items:
+    bl = get_or_cache_baseline(item, "deepseek-r1-distill-qwen-1.5b",
+                               baseline_cache, generate_fn=_dummy_generate)
+    if bl:
+        get_or_cache_target(item, "deepseek-r1-distill-qwen-1.5b",
+                            bl, target_cache, target_mode="most_plausible")
 
-prefills_by_key = load_prefills(paths.root)
+raw_matrix = build_condition_matrix(cfg, [it["item_hash"] for it in items])
+matrix = _resolve_targets(raw_matrix, items_by_hash, cfg, paths,
+                          baseline_cache, target_cache)
+print(f"Resolved {len(matrix)} conditions")
+
+# Look up prefills using proper cache keys
+prefill_cache = Cache(paths.root, "prefills")
+generator_model = "claude-haiku-4-5-20251001"
+prompt_version = "v1"
+
+prefills_by_key = {}
+for cond in matrix:
+    family = cond["family"]
+    length = cond["length"]
+    item_hash = cond["item"]
+    target = cond["target"]
+    key = prefill_cache_key("mmlu", item_hash, family, length,
+                             target, generator_model, prompt_version)
+    shard = prefill_shard("mmlu", family, length)
+    rec = prefill_cache.get(shard, key)
+    if rec and rec.get("text"):
+        prefills_by_key[f"{family}|{length}|{item_hash}"] = rec["text"]
+        print(f"  Prefill found: {family}|{length}|{item_hash[:8]}... target={target}")
+
 print(f"Prefills loaded: {len(prefills_by_key)}")
 
 subject_cache = Cache(paths.root, "subject")
