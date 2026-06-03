@@ -58,7 +58,7 @@ def load_mmlu(
     if isinstance(subjects, str) and subjects != "all":
         subjects = [subjects]
 
-    kwargs: dict = {"trust_remote_code": True}
+    kwargs: dict = {}
     if cache_dir is not None:
         kwargs["cache_dir"] = str(cache_dir)
 
