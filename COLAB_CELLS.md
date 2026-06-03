@@ -71,7 +71,7 @@ os.system("python -m src.pipeline.run_experiment --dry_run --cfg limit=1 familie
 
 ## Cell 6 — Load MMLU + resolve targets + generate prefills (Layers 1 + 2)
 
-Requires: Cell 2 (ANTHROPIC_API_KEY set), Cell 3 (paths).
+Requires: Cell 2 (ANTHROPIC_API_KEY set), Cell 3 (paths), Cell 7 (model + tokenizer loaded).
 
 ```python
 import os, yaml
@@ -85,7 +85,6 @@ from src.data.load_mmlu import load_mmlu
 from src.data.select_target import uniform_logprobs, select_targets
 from src.pipeline.baseline import get_or_cache_baseline, get_or_cache_target
 from src.attacks.generate import generate_all_prefills
-from src.attacks.length_control import MockTokenizer
 
 paths = resolve_root()
 
@@ -135,7 +134,8 @@ for c in matrix[:3]:
 prefill_cache = Cache(paths.root, "prefills")
 client = LLMClient.from_env()
 stats = generate_all_prefills(matrix, items_by_hash, client,
-                               tokenizer=MockTokenizer(), cache=prefill_cache,
+                               tokenizer=tokenizer,  # real tokenizer from Cell 7
+                               cache=prefill_cache,
                                generator_model="claude-haiku-4-5-20251001")
 print("Prefill stats:", stats)
 ```
