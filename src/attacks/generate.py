@@ -1,6 +1,6 @@
 """Attack prefill generation — cache Layer 2 (§6.6.1).
 
-Generates and caches prefills for Families A (template), B, C, D (OpenRouter generator).
+Generates and caches prefills for Families A (template), B, C, D (Anthropic API generator).
 Prefills are MODEL-AGNOSTIC: the same content is reused across all subject models
 (length measured in the reference tokenizer once; per-model counts stored as metadata).
 
@@ -139,7 +139,7 @@ def generate_family_a(
     )
 
 
-# ── Families B, C, D (OpenRouter generator) ───────────────────────────────────
+# ── Families B, C, D (Anthropic API generator) ───────────────────────────────
 
 def _call_generator(
     client: LLMClient,
@@ -167,7 +167,7 @@ def generate_prefill(
     tolerance: float = 0.12,
     max_retries: int = 3,
     dataset: str = "mmlu",
-    generator_model: str = "anthropic/claude-3-haiku-20240307",
+    generator_model: str = "claude-haiku-4-5-20251001",
     prompt_version: str = "v1",
     cache: Optional[Cache] = None,
     extra_tokenizers: Optional[dict[str, Any]] = None,
@@ -285,7 +285,7 @@ def generate_all_prefills(
     tolerance: float = 0.12,
     max_retries: int = 3,
     dataset: str = "mmlu",
-    generator_model: str = "anthropic/claude-3-haiku-20240307",
+    generator_model: str = "claude-haiku-4-5-20251001",
     prompt_version: str = "v1",
     extra_tokenizers: Optional[dict[str, Any]] = None,
 ) -> PrefillBatchStats:

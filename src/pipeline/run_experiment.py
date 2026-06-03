@@ -205,7 +205,7 @@ def _run_subject_generation(
     # Fetch prefill text from Layer 2.
     from src.attacks.generate import prefill_cache_key as pfk, prefill_shard as pfs
     from src.attacks.templates import conclusion_sentence
-    generator_model = cfg.get("generator_model", "anthropic/claude-3-haiku-20240307")
+    generator_model = cfg.get("generator_model", "claude-haiku-4-5-20251001")
     prompt_version = cfg.get("prompt_version", "v1")
 
     if family == "A":
@@ -266,7 +266,7 @@ def _run_judges(
 
     # VR (faithfulness) judge.
     fj_cfg = judges_cfg.get("faithfulness", {})
-    fj_model = fj_cfg.get("model_id", "anthropic/claude-3-haiku-20240307")
+    fj_model = fj_cfg.get("model_id", "claude-haiku-4-5-20251001")
     fj_pv = fj_cfg.get("prompt_version", prompt_version)
     vr_result = judge_faithfulness(
         question, trace, answer, prefill_text,
@@ -277,7 +277,7 @@ def _run_judges(
     mfr_results: dict[str, dict] = {}
     for variant in monitor_variants:
         mon_cfg = judges_cfg.get(f"monitor_{variant}", judges_cfg.get("monitor_full_trace", {}))
-        mon_model = mon_cfg.get("model_id", "anthropic/claude-3-haiku-20240307")
+        mon_model = mon_cfg.get("model_id", "claude-haiku-4-5-20251001")
         mon_pv = mon_cfg.get("prompt_version", prompt_version)
         mfr_results[variant] = run_monitor(
             question, trace, answer, client, mon_model,
@@ -402,7 +402,7 @@ def run(cfg: dict, cost_cfg: dict, paths: Paths) -> None:
         family = cond["family"]
         length = cond["length"]
         target = cond["target"]
-        generator_model = cfg.get("generator_model", "anthropic/claude-3-haiku-20240307")
+        generator_model = cfg.get("generator_model", "claude-haiku-4-5-20251001")
         prompt_version = cfg.get("prompt_version", "v1")
         from src.attacks.generate import prefill_cache_key as pfk, prefill_shard as pfs
         pf_shard = pfs("mmlu", "A" if family == "A" else family, length)
