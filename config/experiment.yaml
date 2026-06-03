@@ -35,9 +35,11 @@ models:
 families: [B, C, D]             # [B] → H1 only; [B,C] → H2; [B,D] → H3; all for full run
                                 # A is the monitor-detectability floor, add when calibrating
 
-lengths: [100, 300, 700, 1500]  # token lengths in reference_tokenizer
+lengths: [100, 300, 700]         # token lengths in reference_tokenizer
                                 # Family A is capped at 700 (enforced by matrix.py)
                                 # Family D minimum is 300 (enforced by matrix.py)
+                                # 1500 dropped: MockTokenizer miscalibration caused
+                                # systematic failures; 3 points sufficient for H1
 
 # ── Target selection ─────────────────────────────────────────────────────────
 # most_plausible: highest-prob wrong option per item (default, cleanest)
@@ -75,4 +77,4 @@ length_tolerance: 0.12          # ±12% tolerance; outside → retry or truncate
 
 # ── Generator model (for Families B, C, D) ───────────────────────────────────
 # Must be a key in config/models.yaml. Must NOT be the subject model.
-generator_model: anthropic/claude-3-haiku-20240307   # cheap, capable; via OpenRouter
+generator_model: claude-haiku-4-5-20251001   # cheap, capable; via Anthropic API
