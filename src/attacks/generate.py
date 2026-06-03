@@ -255,7 +255,8 @@ def generate_prefill(
         # Write immediately (don't use get_or_compute since we already generated).
         from src.infra.cache import canonical_key as _ck
         cache.get_or_compute(shard=shard, key=key, compute_fn=lambda: record,
-                             meta={"family": family, "length_bucket": length_bucket})
+                             meta={"family": family, "length": length_bucket,
+                                   "item_hash": item["item_hash"]})
 
     return PrefillResult(
         text=record["text"], family=family, length_bucket=length_bucket,
